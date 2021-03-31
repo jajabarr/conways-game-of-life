@@ -37,7 +37,13 @@ function summarizeGridNeighbors(
 
 export function makeNextGeneration(grid: Grid): Grid {
   const { blockSize, width, height } = grid.dimensions();
-  const nextGeneration: Grid = new Grid(blockSize, width, height);
+
+  const nextGeneration: Grid = new Grid(
+    blockSize,
+    width,
+    height,
+    grid.getCanvas()
+  );
 
   const seenBlocks: Grid = new Grid(blockSize, width, height);
 

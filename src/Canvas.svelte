@@ -1,5 +1,4 @@
 <script lang="typescript" context="module">
-  export let canvas: HTMLCanvasElement;
   export const grid: Grid = new Grid(0, 0, 0);
   export const displayGrid = (state: boolean) => {
     const gridCanvas: HTMLCanvasElement = document.querySelector('#grid');
@@ -23,7 +22,7 @@
 
   let wrapper: HTMLDivElement;
   let gridLines: HTMLCanvasElement;
-  let _canvas: HTMLCanvasElement;
+  let canvas: HTMLCanvasElement;
 
   let unsubscribeMouseDown$: Subscription | undefined;
 
@@ -34,10 +33,7 @@
 
   function onMouseDown(event: Coordinate) {
     grid.flip(event.x, event.y);
-
-    withCanvas(_canvas, (context2D) => {
-      grid.drawBlock(context2D, event.x, event.y);
-    });
+    grid.drawBlock(event.x, event.y);
   }
 
   $: {
@@ -56,17 +52,16 @@
       drawBlockGrid(context2D, canvasRect, blockSize);
     });
 
-    withCanvas(_canvas, (context2D) => {
-      adjustCanvasDPI(_canvas, context2D, canvasRect);
+    withCanvas(canvas, (context2D) => {
+      adjustCanvasDPI(canvas, context2D, canvasRect);
 
       unsubscribeMouseDown$ = getMouseDownOnElement$(
-        gridLines,
+        canvas,
         blockSize
       ).subscribe(onMouseDown);
 
-      grid.drawGrid(context2D);
-
-      canvas = _canvas;
+      grid.setCanvas(canvas);
+      grid.drawGrid();
     });
   }
 </script>
@@ -76,7 +71,7 @@
     id="wrapper-board"
     style="height: {canvasRect.height}px; width: {canvasRect.width}px"
   >
-    <canvas bind:this={_canvas} id="main-canvas" />
+    <canvas bind:this={canvas} id="main-canvas" />
     <canvas id="grid" bind:this={gridLines} class={blockSize ? 'border' : ''} />
   </div>
 </div>
@@ -93,6 +88,10 @@
 
   div#wrapper-board {
     position: relative;
+  }
+
+  canvas#grid {
+    pointer-events: none;
   }
 
   .border {

@@ -13,6 +13,8 @@ interface IGridData {
 
 interface IGrid {
   grid: IGridData;
+  setCanvas(canvas: HTMLCanvasElement);
+  getCanvas(): HTMLCanvasElement;
   resize(blockSize: number, width: number, height: number): void;
   dimensions(): { blockSize: number; width: number; height: number };
   iterate(callback: (x: number, y: number) => void);
@@ -21,18 +23,25 @@ interface IGrid {
   get: (x: number, y: number) => BlockValue | undefined;
   flip(x: number, y: number): BlockValue | undefined;
   drawBlock(
-    context2D: CanvasRenderingContext2D,
     x: number,
     y: number,
-    color?: string
+    color?: string,
+    canvas?: HTMLCanvasElement
   ): void;
-  drawGrid(context2D: CanvasRenderingContext2D, color?: string): void;
+  drawGrid(color?: string, canvas?: HTMLCanvasElement): void;
 }
 
 declare function between(value: number, lhs: number, rhs: number): boolean;
 declare class Grid implements IGrid {
   grid: IGridData;
-  constructor(blockSize: number, width: number, height: number);
+  constructor(
+    blockSize: number,
+    width: number,
+    height: number,
+    canvas?: HTMLCanvasElement
+  );
+  setCanvas(canvas: HTMLCanvasElement);
+  getCanvas(): HTMLCanvasElement;
   resize(blockSize: number, width: number, height: number): void;
   dimensions(): { blockSize: number; width: number; height: number };
   iterate(callback: (x: number, y: number) => void);
@@ -41,10 +50,10 @@ declare class Grid implements IGrid {
   get: (x: number, y: number) => BlockValue | undefined;
   flip(x: number, y: number): BlockValue | undefined;
   drawBlock(
-    context2D: CanvasRenderingContext2D,
     x: number,
     y: number,
-    color?: string
+    color?: string,
+    canvas?: HTMLCanvasElement
   ): void;
-  drawGrid(context2D: CanvasRenderingContext2D, color?: string): void;
+  drawGrid(color?: string, canvas?: HTMLCanvasElement): void;
 }
