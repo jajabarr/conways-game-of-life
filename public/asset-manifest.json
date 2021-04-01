@@ -1,0 +1,10 @@
+{
+  "files": {
+    "bundle.css": "/build/bundle.css",
+    "bundle.js": "/build/bundle.js",
+    "bundle.js.map": "/build/bundle.js.map",
+    "index.html": "/index.html",
+    "favicon.png": "/favicon.png",
+    "global.css": "/global.css"
+  }
+}
