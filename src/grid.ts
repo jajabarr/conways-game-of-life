@@ -30,15 +30,23 @@ export class Grid implements IGrid {
     this.blockSize = blockSize;
     this.width = width;
     this.height = height;
+
+    const newGrid: IGrid = new Grid(blockSize, width, height);
+
+    this.iterate((x, y, value) => {
+      newGrid.set(x % width, y % height, value);
+    });
+
+    this.grid = newGrid.grid;
   }
 
-  iterate(callback: (x: number, y: number) => void) {
+  iterate(callback: (x: number, y: number, value: BlockValue) => void) {
     const yAxis = Object.keys(this.grid);
     for (let _y of yAxis) {
       let y = +_y;
       for (let _x of Object.keys(this.grid[y])) {
         let x = +_x;
-        callback(x, y);
+        callback(x, y, this.grid[_y][_x]);
       }
     }
   }

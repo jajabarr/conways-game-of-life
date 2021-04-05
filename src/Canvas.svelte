@@ -16,27 +16,34 @@
     drawBlockGrid
   } from './canvas/canvas-helpers';
   import { getMouseDownOnElement$ } from './events/mouse';
+  import { getWindowResize$ } from './events/resize';
   import type { Subscription } from 'rxjs';
+  import { onMount } from 'svelte';
 
   export let blockSize: number;
 
   let wrapper: HTMLDivElement;
   let gridLines: HTMLCanvasElement;
   let canvas: HTMLCanvasElement;
+  let canvasRect: { height: number; width: number } = { height: 0, width: 0 };
 
   let unsubscribeMouseDown$: Subscription | undefined;
-
-  $: canvasRect = {
-    height: wrapper?.clientHeight - (wrapper?.clientHeight % blockSize) || 0,
-    width: wrapper?.clientWidth - (wrapper?.clientWidth % blockSize) || 0
-  };
 
   function onMouseDown(event: Coordinate) {
     grid.flip(event.x, event.y);
     grid.drawBlock(event.x, event.y);
   }
 
-  $: {
+  function onWindowResize() {
+    canvasRect = {
+      height: wrapper?.clientHeight - (wrapper?.clientHeight % blockSize) || 0,
+      width: wrapper?.clientWidth - (wrapper?.clientWidth % blockSize) || 0
+    };
+
+    resize(true /* fromWindow */);
+  }
+
+  function resize(fromWindow: boolean = false) {
     if (unsubscribeMouseDown$) {
       unsubscribeMouseDown$.unsubscribe();
     }
@@ -59,10 +66,33 @@
         canvas,
         blockSize
       ).subscribe(onMouseDown);
-
-      grid.setCanvas(canvas);
-      grid.drawGrid();
     });
+
+    if (!fromWindow) {
+      grid.drawGrid();
+    }
+  }
+
+  onMount(() => {
+    grid.setCanvas(canvas);
+
+    const unsubscribeWindowResize$: Subscription = getWindowResize$().subscribe(
+      onWindowResize
+    );
+
+    return () => {
+      unsubscribeMouseDown$.unsubscribe();
+      unsubscribeWindowResize$.unsubscribe();
+    };
+  });
+
+  $: {
+    canvasRect = {
+      height: wrapper?.clientHeight - (wrapper?.clientHeight % blockSize) || 0,
+      width: wrapper?.clientWidth - (wrapper?.clientWidth % blockSize) || 0
+    };
+
+    resize();
   }
 </script>
 
@@ -78,8 +108,8 @@
 
 <style>
   div#main-board {
-    height: 90%;
-    width: 90%;
+    height: 90vh;
+    width: 90vw;
 
     display: flex;
     justify-content: center;

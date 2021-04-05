@@ -47,8 +47,8 @@ export function makeNextGeneration(grid: Grid): Grid {
 
   const seenBlocks: Grid = new Grid(blockSize, width, height);
 
-  grid.iterate((x, y) => {
-    forEachNeighbor(x, y, width, height, (x, y) => {
+  grid.iterate((parentX, parentY) => {
+    forEachNeighbor(parentX, parentY, width, height, (x, y) => {
       const block = seenBlocks.get(x, y);
 
       if (block === 1) {

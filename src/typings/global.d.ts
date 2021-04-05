@@ -17,7 +17,7 @@ interface IGrid {
   getCanvas(): HTMLCanvasElement;
   resize(blockSize: number, width: number, height: number): void;
   dimensions(): { blockSize: number; width: number; height: number };
-  iterate(callback: (x: number, y: number) => void);
+  iterate(callback: (x: number, y: number, value: BlockValue) => void);
   clear(): void;
   set: (x: number, y: number, value: BlockValue) => BlockValue | undefined;
   get: (x: number, y: number) => BlockValue | undefined;
@@ -44,7 +44,7 @@ declare class Grid implements IGrid {
   getCanvas(): HTMLCanvasElement;
   resize(blockSize: number, width: number, height: number): void;
   dimensions(): { blockSize: number; width: number; height: number };
-  iterate(callback: (x: number, y: number) => void);
+  iterate(callback: (x: number, y: number, value: BlockValue) => void);
   clear(): void;
   set: (x: number, y: number, value: BlockValue) => BlockValue | undefined;
   get: (x: number, y: number) => BlockValue | undefined;
