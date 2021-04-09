@@ -1,27 +1,51 @@
 <script lang="typescript">
-  import { animationEvent$, getAnimationEvent$, getFPS$ } from './events/raf';
-  import { getWindowResize$ } from './events/resize';
+  import { getAnimationEvent$, getFPS$ } from './events/raf';
   import { grid, displayGrid } from './Canvas.svelte';
   import { makeNextGeneration } from './generation';
   import NumberSelector from './NumberSelector.svelte';
   import { onMount } from 'svelte';
-  import { tap, debounce } from 'rxjs/operators';
+  import { Fade } from './fade';
   import type { Subscription } from 'rxjs';
 
   let isRunning: boolean = false;
   let showGrid: boolean = true;
+  let animate: boolean = false;
   let unsubscribeRAF$: Subscription | undefined;
-  let unsubscriptFPS$: Subscription | undefined;
+  let unsubscribeFPS$: Subscription | undefined;
 
-  let generationGrid: Grid = grid;
-
+  let generationGrid: Grid<BlockValue> = new Grid(
+    grid.dimensions(),
+    grid.getCanvas()
+  );
+  let fader = new Fade(grid);
   let frameRate = 0;
   let fps = 0;
 
-  function nextGeneration() {
-    generationGrid.drawGrid('white');
-    generationGrid = makeNextGeneration(generationGrid);
-    generationGrid.drawGrid();
+  function copyGrid(items: 'grid' | 'fader' | 'both') {
+    grid.iterate((x, y, value) => {
+      if (value > 0) {
+        switch (items) {
+          case 'grid':
+            generationGrid.set(x, y, value);
+            break;
+          case 'fader':
+            fader.set(x, y);
+            break;
+          case 'both':
+            generationGrid.set(x, y, value);
+            fader.set(x, y);
+            break;
+        }
+      }
+    });
+  }
+
+  function run() {
+    generationGrid = makeNextGeneration(generationGrid, fader);
+    generationGrid.drawGrid(undefined, undefined, [
+      { key: -1, destroy: true },
+      { key: 1, color: 'black' }
+    ]);
   }
 
   function reset(clear: boolean = false) {
@@ -29,47 +53,75 @@
 
     generationGrid.drawGrid('white');
 
+    fader.clear();
+    generationGrid.clear();
+
+    copyGrid('both');
+
     if (clear) {
       grid.clear();
     } else {
-      grid.drawGrid();
+      generationGrid.drawGrid('black');
     }
-    generationGrid = grid;
   }
 
   onMount(() => {
-    // TODO: sometimes this causes blocks to disappear
-    const unsubscribeWindowResize$: Subscription = getWindowResize$()
-      .pipe(
-        tap(() => {
-          isRunning = false;
-          const { blockSize, width, height } = grid.dimensions();
-          generationGrid.resize(blockSize, width, height);
-        }),
-        debounce(() => animationEvent$),
-        tap(() => {
-          isRunning = true;
-        })
-      )
-      .subscribe();
+    const unsubscribeGridResize: Subscription = grid.subscribe(
+      (event: GridChangeEvent<BlockValue>) => {
+        isRunning = false;
+
+        if (isGridDimensionEvent(event)) {
+          generationGrid.resize(event.payload);
+          fader.resize(event.payload);
+        } else if (isGridBlockEvent(event)) {
+          const { x, y, value } = event.payload;
+          if (value > 0) {
+            fader.set(x, y);
+            generationGrid.set(x, y, value);
+          } else {
+            fader.remove(x, y);
+            generationGrid.remove(x, y);
+          }
+        } else if (isGridCanvasEvent(event)) {
+          generationGrid.setCanvas(event.payload);
+          fader.setCanvas(event.payload);
+        }
+      }
+    );
 
     return () => {
-      unsubscribeWindowResize$.unsubscribe();
+      unsubscribeGridResize.unsubscribe();
     };
   });
+
+  $: {
+    if (unsubscribeFPS$) {
+      unsubscribeFPS$.unsubscribe();
+    }
+
+    if (animate) {
+      if (isRunning) {
+        fader.clear();
+        fader.animate();
+      } else {
+        fader.clear();
+      }
+    } else {
+      fader.clear();
+    }
+
+    if (isRunning) {
+      unsubscribeFPS$ = getFPS$().subscribe((_fps) => (fps = _fps));
+    }
+  }
 
   $: {
     if (unsubscribeRAF$) {
       unsubscribeRAF$.unsubscribe();
     }
 
-    if (unsubscriptFPS$) {
-      unsubscriptFPS$.unsubscribe();
-    }
-
     if (isRunning) {
-      unsubscribeRAF$ = getAnimationEvent$(frameRate).subscribe(nextGeneration);
-      unsubscriptFPS$ = getFPS$().subscribe((_fps) => (fps = _fps));
+      unsubscribeRAF$ = getAnimationEvent$(frameRate).subscribe(run);
     }
   }
 
@@ -84,10 +136,14 @@
 <div>
   <span>Show grid: </span><input type="checkbox" bind:checked={showGrid} />
 </div>
+<div>
+  <span>Animate: </span><input type="checkbox" bind:checked={animate} />
+</div>
 
-<button on:click={() => (isRunning = !isRunning)}
-  >{isRunning ? 'Pause' : 'Start'}</button
->
+<button on:click={() => (isRunning = !isRunning)}>
+  {isRunning ? 'Pause' : 'Start'}
+</button>
+
 <span>FPS: {fps}</span>
 
 <style>

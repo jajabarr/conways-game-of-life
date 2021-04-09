@@ -16,7 +16,7 @@ function forEachNeighbor(
 }
 
 function summarizeGridNeighbors(
-  grid: Grid,
+  grid: Grid<BlockValue>,
   coordinate: Coordinate
 ): { alive: number; dead: number } {
   let dead = 0;
@@ -35,41 +35,50 @@ function summarizeGridNeighbors(
   return { alive, dead };
 }
 
-export function makeNextGeneration(grid: Grid): Grid {
-  const { blockSize, width, height } = grid.dimensions();
+export function makeNextGeneration(
+  grid: Grid<BlockValue>,
+  fader: any
+): Grid<BlockValue> {
+  const dimensions = grid.dimensions();
 
-  const nextGeneration: Grid = new Grid(
-    blockSize,
-    width,
-    height,
+  const nextGeneration: Grid<BlockValue> = new Grid<BlockValue>(
+    dimensions,
     grid.getCanvas()
   );
 
-  const seenBlocks: Grid = new Grid(blockSize, width, height);
+  const seenBlocks: Grid<BlockValue> = new Grid<BlockValue>(dimensions);
 
   grid.iterate((parentX, parentY) => {
-    forEachNeighbor(parentX, parentY, width, height, (x, y) => {
-      const block = seenBlocks.get(x, y);
+    forEachNeighbor(
+      parentX,
+      parentY,
+      dimensions.width,
+      dimensions.height,
+      (x, y) => {
+        const block = seenBlocks.get(x, y);
 
-      if (block === 1) {
-        return;
-      }
-
-      seenBlocks.set(x, y, 1);
-
-      const isAlive = grid.get(x, y) == 1;
-      const { alive } = summarizeGridNeighbors(grid, { x, y });
-
-      if (isAlive) {
-        if (between(alive, 2, 3)) {
-          nextGeneration.set(x, y, 1);
-        } else {
-          nextGeneration.set(x, y, -1);
+        if (block === 1) {
+          return;
         }
-      } else if (!isAlive && alive == 3) {
-        nextGeneration.set(x, y, 1);
+
+        seenBlocks.set(x, y, 1);
+
+        const isAlive = grid.get(x, y) == 1;
+        const { alive } = summarizeGridNeighbors(grid, { x, y });
+
+        if (isAlive) {
+          if (between(alive, 2, 3)) {
+            nextGeneration.set(x, y, 1);
+            fader.set(x, y);
+          } else {
+            nextGeneration.set(x, y, -1);
+          }
+        } else if (!isAlive && alive == 3) {
+          nextGeneration.set(x, y, 1);
+          fader.set(x, y);
+        }
       }
-    });
+    );
   });
 
   return nextGeneration;

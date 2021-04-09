@@ -1,5 +1,9 @@
 <script lang="typescript" context="module">
-  export const grid: Grid = new Grid(0, 0, 0);
+  export const grid: Grid<BlockValue> = new Grid({
+    blockSize: 0,
+    width: 0,
+    height: 0
+  });
   export const displayGrid = (state: boolean) => {
     const gridCanvas: HTMLCanvasElement = document.querySelector('#grid');
 
@@ -30,8 +34,10 @@
   let unsubscribeMouseDown$: Subscription | undefined;
 
   function onMouseDown(event: Coordinate) {
-    grid.flip(event.x, event.y);
-    grid.drawBlock(event.x, event.y);
+    const blockValue = ((grid.get(event.x, event.y) ?? -1) * -1) as BlockValue;
+
+    grid.set(event.x, event.y, blockValue);
+    grid.drawBlock(event.x, event.y, blockValue > 0 ? 'black' : 'white');
   }
 
   function onWindowResize() {
@@ -48,11 +54,11 @@
       unsubscribeMouseDown$.unsubscribe();
     }
 
-    grid.resize(
+    grid.resize({
       blockSize,
-      Math.floor(canvasRect.width / blockSize),
-      Math.floor(canvasRect.height / blockSize)
-    );
+      width: Math.floor(canvasRect.width / blockSize),
+      height: Math.floor(canvasRect.height / blockSize)
+    });
 
     withCanvas(gridLines, (context2D) => {
       adjustCanvasDPI(gridLines, context2D, canvasRect);
@@ -69,7 +75,7 @@
     });
 
     if (!fromWindow) {
-      grid.drawGrid();
+      grid.drawGrid('black');
     }
   }
 

@@ -9,10 +9,10 @@ export interface IRaf {
   frameDistance: number;
 }
 
-export const animationEvent$: Observable<number> = scheduled(
-  [animationFrameScheduler.now()],
+export const animationEvent$: Observable<number> = interval(
+  0,
   animationFrameScheduler
-).pipe(repeat(), share());
+).pipe(share());
 
 export function getAnimationEvent$(frameRate: number = 16): Observable<number> {
   return animationEvent$.pipe(throttle(() => interval(frameRate)));
