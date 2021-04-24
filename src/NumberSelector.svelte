@@ -7,7 +7,7 @@
 
   $: {
     if (!isNaN(+bindedInputValue) && bindedInputValue > 0) {
-      bindedInputValue = previousBlockSize = value = +bindedInputValue;
+      value = bindedInputValue = previousBlockSize = +bindedInputValue;
     } else {
       bindedInputValue =
         bindedInputValue.toString() !== '' ? previousBlockSize : undefined;

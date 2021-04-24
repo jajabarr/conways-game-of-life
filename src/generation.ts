@@ -37,7 +37,8 @@ function summarizeGridNeighbors(
 
 export function makeNextGeneration(
   grid: Grid<BlockValue>,
-  fader: any
+  fader: any,
+  isAnimating: boolean
 ): Grid<BlockValue> {
   const dimensions = grid.dimensions();
 
@@ -69,13 +70,17 @@ export function makeNextGeneration(
         if (isAlive) {
           if (between(alive, 2, 3)) {
             nextGeneration.set(x, y, 1);
-            fader.set(x, y);
+            if (isAnimating) {
+              fader.set(x, y);
+            }
           } else {
             nextGeneration.set(x, y, -1);
           }
         } else if (!isAlive && alive == 3) {
           nextGeneration.set(x, y, 1);
-          fader.set(x, y);
+          if (isAnimating) {
+            fader.set(x, y);
+          }
         }
       }
     );

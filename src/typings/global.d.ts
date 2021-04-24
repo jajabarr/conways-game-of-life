@@ -7,6 +7,10 @@ type BlockValue = -1 | 1;
 
 type GridBlockUpdate<T> = Coordinate & { value: T };
 
+type CurrentRef<T> = {
+  current: T;
+};
+
 interface IGridData<T> {
   [key: number]: {
     [key: number]: T;

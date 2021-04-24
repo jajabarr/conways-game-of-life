@@ -1,5 +1,5 @@
 <script lang="typescript">
-  import { getAnimationEvent$, getFPS$ } from './events/raf';
+  import { getAnimationEvent$, getFPS$, withFPS$ } from './events/raf';
   import { grid, displayGrid } from './Canvas.svelte';
   import { makeNextGeneration } from './generation';
   import NumberSelector from './NumberSelector.svelte';
@@ -7,33 +7,68 @@
   import { Fade } from './fade';
   import type { Subscription } from 'rxjs';
 
-  let isRunning: boolean = false;
-  let showGrid: boolean = true;
-  let animate: boolean = false;
-  let unsubscribeRAF$: Subscription | undefined;
-  let unsubscribeFPS$: Subscription | undefined;
-
-  let generationGrid: Grid<BlockValue> = new Grid(
+  let RAFSubscription$: Subscription | undefined;
+  let GenerationGrid = new Grid<BlockValue>(
     grid.dimensions(),
     grid.getCanvas()
   );
-  let fader = new Fade(grid);
+  let Fader = new Fade(grid);
+  const FPS = { current: 0 };
+
+  // Reactors
+  let isRunning: boolean = false;
+  let showGrid: boolean = true;
+  let animate: boolean = false;
   let frameRate = 0;
   let fps = 0;
+
+  function start() {
+    isRunning = true;
+    subscribeRAF$();
+
+    if (animate) {
+      Fader.animate();
+    }
+  }
+
+  function drawGenerationalGrid() {
+    GenerationGrid.drawGrid(undefined, undefined, [
+      { key: -1, destroy: true },
+      { key: 1, color: 'black' }
+    ]);
+  }
+
+  function stop() {
+    isRunning = false;
+    RAFSubscription$?.unsubscribe();
+    Fader.stop();
+    GenerationGrid.drawGrid('black');
+  }
+
+  function subscribeRAF$() {
+    if (RAFSubscription$) {
+      console.log('Grid unsubscribe');
+      RAFSubscription$.unsubscribe();
+    }
+
+    RAFSubscription$ = withFPS$(getAnimationEvent$(frameRate), FPS).subscribe(
+      run
+    );
+  }
 
   function copyGrid(items: 'grid' | 'fader' | 'both') {
     grid.iterate((x, y, value) => {
       if (value > 0) {
         switch (items) {
           case 'grid':
-            generationGrid.set(x, y, value);
+            GenerationGrid.set(x, y, value);
             break;
           case 'fader':
-            fader.set(x, y);
+            Fader.set(x, y);
             break;
           case 'both':
-            generationGrid.set(x, y, value);
-            fader.set(x, y);
+            GenerationGrid.set(x, y, value);
+            Fader.set(x, y);
             break;
         }
       }
@@ -41,50 +76,49 @@
   }
 
   function run() {
-    generationGrid = makeNextGeneration(generationGrid, fader);
-    generationGrid.drawGrid(undefined, undefined, [
-      { key: -1, destroy: true },
-      { key: 1, color: 'black' }
-    ]);
+    fps = FPS.current;
+    GenerationGrid = makeNextGeneration(GenerationGrid, Fader, animate);
+    drawGenerationalGrid();
   }
 
   function reset(clear: boolean = false) {
     isRunning = false;
+    RAFSubscription$?.unsubscribe();
 
-    generationGrid.drawGrid('white');
+    GenerationGrid.drawGrid('white');
 
-    fader.clear();
-    generationGrid.clear();
-
-    copyGrid('both');
+    Fader.clear();
+    GenerationGrid.clear();
 
     if (clear) {
       grid.clear();
     } else {
-      generationGrid.drawGrid('black');
+      copyGrid('both');
+      GenerationGrid.drawGrid('black');
     }
   }
 
   onMount(() => {
     const unsubscribeGridResize: Subscription = grid.subscribe(
       (event: GridChangeEvent<BlockValue>) => {
+        console.log(event);
         isRunning = false;
 
         if (isGridDimensionEvent(event)) {
-          generationGrid.resize(event.payload);
-          fader.resize(event.payload);
+          GenerationGrid.resize(event.payload);
+          Fader.resize(event.payload);
         } else if (isGridBlockEvent(event)) {
           const { x, y, value } = event.payload;
           if (value > 0) {
-            fader.set(x, y);
-            generationGrid.set(x, y, value);
+            Fader.set(x, y);
+            GenerationGrid.set(x, y, value);
           } else {
-            fader.remove(x, y);
-            generationGrid.remove(x, y);
+            Fader.remove(x, y);
+            GenerationGrid.remove(x, y);
           }
         } else if (isGridCanvasEvent(event)) {
-          generationGrid.setCanvas(event.payload);
-          fader.setCanvas(event.payload);
+          GenerationGrid.setCanvas(event.payload);
+          Fader.setCanvas(event.payload);
         }
       }
     );
@@ -95,34 +129,17 @@
   });
 
   $: {
-    if (unsubscribeFPS$) {
-      unsubscribeFPS$.unsubscribe();
-    }
-
     if (animate) {
-      if (isRunning) {
-        fader.clear();
-        fader.animate();
-      } else {
-        fader.clear();
-      }
+      Fader.clear();
+      Fader.animate();
     } else {
-      fader.clear();
-    }
-
-    if (isRunning) {
-      unsubscribeFPS$ = getFPS$().subscribe((_fps) => (fps = _fps));
+      Fader.clear();
+      drawGenerationalGrid();
     }
   }
 
   $: {
-    if (unsubscribeRAF$) {
-      unsubscribeRAF$.unsubscribe();
-    }
-
-    if (isRunning) {
-      unsubscribeRAF$ = getAnimationEvent$(frameRate).subscribe(run);
-    }
+    frameRate && subscribeRAF$();
   }
 
   $: {
@@ -140,7 +157,7 @@
   <span>Animate: </span><input type="checkbox" bind:checked={animate} />
 </div>
 
-<button on:click={() => (isRunning = !isRunning)}>
+<button on:click={isRunning ? stop : start}>
   {isRunning ? 'Pause' : 'Start'}
 </button>
 
